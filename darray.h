@@ -167,7 +167,7 @@ void *darray_push(struct darray *da, long n)
 
 /*! darray_pop shrinks the array by `n` elements.
  * Returns a pointer to the first erased element.
- * Cannot fail.
+ * Returns `NULL` on error.
  */
 inline
 void *darray_pop(struct darray *da, long n)
@@ -226,7 +226,7 @@ void *darray_removeswap(struct darray *da, long i)
 	i = DARRAY_INDEX(da, i);
 
 	if (i < da->len) {
-		void const *last = darray_pop(da, 1);
+		void const *const last = darray_pop(da, 1);
 		if (last) {
 			long const inc = da->inc;
 			return memmove(da->data + i * inc, last, inc);
@@ -246,12 +246,15 @@ void *darray_swap(struct darray *da, long i, long j)
 	i = DARRAY_INDEX(da, i);
 	j = DARRAY_INDEX(da, j);
 
-	if (i < da->len && j < da->len) {
-		char *tmp = darray_push(da, 1);
+	if (i < da->len && j < da->len && i != j) {
+		char *const tmp = darray_push(da, 1);
 		if (tmp) {
-			memcpy(tmp, da->data + i, da->inc);
-			memcpy(da->data + i, da->data + j, da->inc);
-			memcpy(da->data + j, tmp, da->inc);
+			long const inc = da->inc;
+			char *const ai = da->data + i * inc;
+			char *const aj = da->data + j * inc;
+			memcpy(tmp, ai, inc);
+			memcpy(ai, aj, inc);
+			memcpy(aj, tmp, inc);
 			return darray_pop(da, 1);
 		}
 	}

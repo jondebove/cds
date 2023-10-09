@@ -105,12 +105,13 @@ int htable_rehash(struct htable *ht, int shift)
 	assert(shift >= 2 && shift <= HTABLE_BITS - 1);
 	assert(HTABLE_CAP(shift) >= ht->len);
 
+	long const inc = ht->inc;
 	struct htable htnew;
-	htable_create(&htnew, ht->inc, ht->seed, ht->hasher);
+	htable_create(&htnew, inc, ht->seed, ht->hasher);
 
 	long size = HTABLE_SIZE(shift);
 
-	htnew.table = malloc(size * (sizeof(htnew.table[0]) + htnew.inc));
+	htnew.table = malloc(size * (sizeof(htnew.table[0]) + inc));
 	if (!htnew.table) {
 		return -ENOMEM;
 	}
@@ -131,9 +132,9 @@ int htable_rehash(struct htable *ht, int shift)
 			HTABLE_PROBE_LOOP(i, ht->table[j].hash, &htnew,
 				if (htnew.table[i].hash == HBUCKET_EMPTY) {
 					htnew.table[i].hash = ht->table[j].hash;
-					memcpy(htnew.data + i * htnew.inc,
-							ht->data + j * ht->inc,
-							htnew.inc);
+					memcpy(htnew.data + i * inc,
+							ht->data + j * inc,
+							inc);
 					break;
 				}
 			);

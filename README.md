@@ -11,6 +11,7 @@ Genericity is achieved using `void *`, so the compiler will not help you.
 ## Usage
 
 Just copy paste the `.c` and `.h` files you need in your project.
+
 Look at the files `*_test.c` to see examples.
 
 ## License
