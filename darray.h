@@ -37,11 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef DARRAY_CAP_MIN
-/*! Minimum capacity of a dynamic array. */
-#define DARRAY_CAP_MIN		8L
-#endif
-
 #ifndef DARRAY_NEGATIVE_INDEX
 /*! Flag to allow negative indexing to access the end of the array. */
 #define DARRAY_NEGATIVE_INDEX	1
@@ -101,21 +96,20 @@ inline
 int darray_setcap(struct darray *da, long cap)
 {
 	assert(da);
-	assert(cap > 0);
-
-	long const asked = cap;
-	if (cap < DARRAY_CAP_MIN) {
-		cap = DARRAY_CAP_MIN;
-	}
-
+	assert(cap >= 0);
 	assert(cap <= LONG_MAX / da->inc);
 
-	void *data = realloc(da->data, cap * da->inc);
+	if (cap == 0) {
+		darray_destroy(da);
+		return 0;
+	}
+
+	char *data = (char *)realloc(da->data, cap * da->inc);  // C++ cast
 	if (data) {
 		da->data = data;
 		da->cap = cap;
-		if (da->len > asked) {
-			da->len = asked;
+		if (da->len > cap) {
+			da->len = cap;
 		}
 		return 0;
 	}
@@ -134,8 +128,8 @@ int darray_setlen(struct darray *da, long len)
 
 	if (len > da->cap) {
 		/* test overflow */
-		long const grow = da->cap < LONG_MAX - da->cap / 2 ?
-			da->cap + da->cap / 2 + 1 : len;
+		long grow = da->cap / 2 + 8;
+		grow = da->cap <= LONG_MAX - grow ? da->cap + grow : len;
 		int err = darray_setcap(da, grow > len ? grow : len);
 		if (err) {
 			return err;
@@ -155,7 +149,7 @@ inline
 void *darray_push(struct darray *da, long n)
 {
 	assert(da);
-	assert(n > 0);
+	assert(n >= 0);
 	assert(n <= LONG_MAX - da->len);
 
 	long const len = da->len;
@@ -173,7 +167,7 @@ inline
 void *darray_pop(struct darray *da, long n)
 {
 	assert(da);
-	assert(n > 0);
+	assert(n >= 0);
 
 	if (da->len >= n) {
 		da->len -= n;
@@ -247,7 +241,7 @@ void *darray_swap(struct darray *da, long i, long j)
 	j = DARRAY_INDEX(da, j);
 
 	if (i < da->len && j < da->len && i != j) {
-		char *const tmp = darray_push(da, 1);
+		char *const tmp = (char *)darray_push(da, 1);  // C++ cast
 		if (tmp) {
 			long const inc = da->inc;
 			char *const ai = da->data + i * inc;
