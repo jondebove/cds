@@ -110,9 +110,9 @@ void htable_walk(struct htable const *ht,
 		void (*action)(void const *item, void *context),
 		void *context);
 
-/*! htable_yield returns a pointer to the first valid entry in the hash table
- * with position greater than `iter`.
- * Returns `NULL` after the last entry.
+/*! htable_yield returns a pointer to the first entry in the hash table
+ * with position greater than or equal to `iter`.
+ * Returns `NULL` if no more entry exists at or after `iter` position.
  */
 void *htable_yield(struct htable const *ht, long *iter);
 

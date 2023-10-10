@@ -28,7 +28,7 @@ int main(void)
 	int i, k, ret;
 
 	struct htable ht;					/* Hash table */
-	htable_create(&ht, sizeof(*e), 0, &iface);
+	htable_create(&ht, sizeof(*e), 0, &iface);		/* Initialization */
 
 	for (i = 0; i < 10; i++) {
 		k = i * i;
@@ -40,12 +40,12 @@ int main(void)
 	e = htable_find(&ht, &k);				/* Search */
 	print(e, "find");
 
-	e = htable_delete(&ht, &k);				/* Deletetion */
+	e = htable_delete(&ht, &k);				/* Deletion */
 	print(e, "delete");
 
 	htable_walk(&ht, print, "walk");			/* Traversal */
 
-	htable_destroy(&ht);
+	htable_destroy(&ht);					/* Reset */
 
 	return 0;
 }

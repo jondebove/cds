@@ -8,7 +8,7 @@ int main(void)
 	int i;
 
 	struct darray a;					/* Dynamic array */
-	darray_create(&a, sizeof(*e));
+	darray_create(&a, sizeof(*e));				/* Initialization */
 
 	for (i = 0; i < 10; i++) {
 		e = darray_push(&a, 1);				/* Push */
@@ -26,7 +26,7 @@ int main(void)
 		printf("at: [%d] = %d\n", i, *e);
 	}
 
-	darray_destroy(&a);
+	darray_destroy(&a);					/* Reset */
 
 	return 0;
 }
