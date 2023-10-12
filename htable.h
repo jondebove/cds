@@ -84,11 +84,21 @@ void htable_destroy(struct htable *ht);
 int htable_resize(struct htable *ht, long cap);
 
 /*! htable_enter inserts an entry with key in the hash table.
- * `exists` is a boolean (0 or 1) indicating if an entry with `key`
- * is already present in the hash table.
- * It returns a pointer to the inserted entry or `NULL` on out of memory.
+ * On success, it returns a pointer to the inserted entry and set `*err` to 0.
+ * It can fail and set `*err` to:
+ * - `-EEXIST` if an entry with key already exists.
+ *   A pointer to the existing entry is returned.
+ * - `-ENOMEM` on out of memory. `NULL` is returned.
  */
-void *htable_enter(struct htable *ht, void const *key, int *exists);
+void *htable_enter(struct htable *ht,
+		void const *key, void const *entry, int *err);
+
+/*! htable_enter_unsafe inserts an entry with key in the hash table.
+ * Compared to `htable_enter` it does not take the entry as argument.
+ * Hence, the user has the responsability to copy a valid entry to
+ * the memory place pointed in return.
+ */
+void *htable_enter_unsafe(struct htable *ht, void const *key, int *err);
 
 /*! htable_find searches an entry with key in the hash table.
  * It returns a pointer to the entry or `NULL` if not found.

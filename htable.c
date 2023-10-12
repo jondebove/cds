@@ -106,10 +106,10 @@ int htable_rehash(struct htable *ht, int shift)
 	assert(HTABLE_CAP(shift) >= ht->len);
 
 	long const inc = ht->inc;
+	long const size = HTABLE_SIZE(shift);
+
 	struct htable htnew;
 	htable_create(&htnew, inc, ht->seed, ht->hasher);
-
-	long size = HTABLE_SIZE(shift);
 
 	htnew.table = malloc(size * (sizeof(htnew.table[0]) + inc));
 	if (!htnew.table) {
@@ -117,15 +117,15 @@ int htable_rehash(struct htable *ht, int shift)
 	}
 
 	htnew.data = (char *)htnew.table + size * sizeof(htnew.table[0]);
-
 	htnew.cap = HTABLE_CAP(shift);
 	htnew.mask = size - 1;
 	htnew.shift = shift;
-	while (size--) {
-		htnew.table[size].hash = HBUCKET_EMPTY;
-	}
 
 	long j;
+	for (j = 0; j < size; j++) {
+		htnew.table[j].hash = HBUCKET_EMPTY;
+	}
+
 	for (j = 0; j <= ht->mask; j++) {
 		if (ht->table[j].hash >= HBUCKET_USED) {
 			long i;
@@ -165,7 +165,7 @@ int htable_resize(struct htable *ht, long cap)
 	return -ENOSPC;
 }
 
-void *htable_enter(struct htable *ht, void const *key, int *exists)
+void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
 {
 	assert(ht);
 
@@ -173,7 +173,7 @@ void *htable_enter(struct htable *ht, void const *key, int *exists)
 	if (ht->cap == 0) {
 		int const shift = ht->shift +
 			(ht->len > HTABLE_CAP(ht->shift) / 2);
-		if (htable_rehash(ht, shift)) {
+		if ((*err = htable_rehash(ht, shift))) {
 			return NULL;
 		}
 	}
@@ -193,19 +193,31 @@ void *htable_enter(struct htable *ht, void const *key, int *exists)
 			}
 			ht->table[i].hash = hash;
 			ht->len++;
-			*exists = 0;
+			*err = 0;
 			return &ht->data[i * ht->inc];
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
 			j = j < 0 ? i : j;
 		} else if (ht->table[i].hash == hash &&
 				!ht->hasher->comp(key, &ht->data[i * ht->inc])) {
-			/* not for multimap */
-			*exists = 1;
+			*err = -EEXIST;
 			return &ht->data[i * ht->inc];
 		}
 	);
 
 	assert(0);
+}
+
+void *htable_enter(struct htable *ht,
+		void const *key, void const *entry, int *err)
+{
+	assert(ht);
+	assert(ht->hasher->comp(key, entry) == 0);
+
+	void *e = htable_enter_unsafe(ht, key, err);
+	if (*err == 0) {
+		memmove(e, entry, ht->inc);
+	}
+	return e;
 }
 
 void *htable_find(struct htable const *ht, void const *key)
@@ -221,10 +233,9 @@ void *htable_find(struct htable const *ht, void const *key)
 		if (ht->table[i].hash == HBUCKET_EMPTY) {
 			return NULL;
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
-			/* skip/maybe insert? */
+			continue;
 		} else if (ht->table[i].hash == hash &&
 				!ht->hasher->comp(key, &ht->data[i * ht->inc])) {
-			/* not for multimap */
 			return &ht->data[i * ht->inc];
 		}
 	);
@@ -245,10 +256,9 @@ void *htable_delete(struct htable *ht, void const *key)
 		if (ht->table[i].hash == HBUCKET_EMPTY) {
 			return NULL;
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
-			/* skip */
+			continue;
 		} else if (ht->table[i].hash == hash &&
 				!ht->hasher->comp(key, &ht->data[i * ht->inc])) {
-			/* not for multimap */
 			ht->table[i].hash = HBUCKET_TOMB;
 			ht->len--;
 			return &ht->data[i * ht->inc];
