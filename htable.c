@@ -268,6 +268,25 @@ void *htable_delete(struct htable *ht, void const *key)
 	assert(0);
 }
 
+int htable_delete_entry(struct htable *ht, void const *entry)
+{
+	assert(ht);
+
+	if (!entry) {
+		return -EINVAL;
+	}
+
+	long const i = ((char *)entry - ht->data) / ht->inc;
+	if (ht->table[i].hash == HBUCKET_EMPTY ||
+			ht->table[i].hash == HBUCKET_TOMB) {
+		return -ENOENT;
+	}
+
+	ht->table[i].hash = HBUCKET_TOMB;
+	ht->len--;
+	return 0;
+}
+
 long htable_len(struct htable const *ht)
 {
 	assert(ht);

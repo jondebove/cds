@@ -95,8 +95,8 @@ void *htable_enter(struct htable *ht,
 
 /*! htable_enter_unsafe inserts an entry with key in the hash table.
  * Compared to `htable_enter` it does not take the entry as argument.
- * Hence, the user has the responsability to copy a valid entry to
- * the memory place pointed in return.
+ * Hence, the user is responsible for copying a valid entry to the
+ * memory location returned.
  */
 void *htable_enter_unsafe(struct htable *ht, void const *key, int *err);
 
@@ -109,6 +109,13 @@ void *htable_find(struct htable const *ht, void const *key);
  * It returns a pointer to the entry or `NULL` if not found.
  */
 void *htable_delete(struct htable *ht, void const *key);
+
+/*! htable_delete_entry removes an entry from the hash table.
+ * It is undefined behavior if `entry` does not point to the hash table.
+ * It returns `0` on success, `-ENOENT` if `entry` points to an empty
+ * bucket and `-EINVAL` if it is `NULL`.
+ */
+int htable_delete_entry(struct htable *ht, void const *entry);
 
 /*! htable_len returns the number of entries. */
 long htable_len(struct htable const *ht);

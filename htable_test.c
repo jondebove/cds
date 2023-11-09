@@ -32,7 +32,8 @@ int main(void)
 
 	for (i = 0; i < 10; i++) {
 		k = i * i;
-		htable_enter(&ht, &k, &i, &ret);		/* Insertion */
+		e = htable_enter(&ht, &k, &i, &ret);		/* Insertion */
+		print(e, "enter");
 	}
 
 	k = 9;
@@ -43,6 +44,10 @@ int main(void)
 	print(e, "delete");
 
 	htable_walk(&ht, print, "walk");			/* Traversal */
+	/*
+	HTABLE_FOREACH(e, &ht)
+		print(e, "foreach");
+	*/
 
 	htable_destroy(&ht);					/* Reset */
 
