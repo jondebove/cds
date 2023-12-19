@@ -268,7 +268,7 @@ void *htable_delete(struct htable *ht, void const *key)
 	assert(0);
 }
 
-int htable_delete_entry(struct htable *ht, void const *entry)
+int htable_delete_unsafe(struct htable *ht, void const *entry)
 {
 	assert(ht);
 
