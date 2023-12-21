@@ -35,7 +35,7 @@ extern int dstring_concat(struct dstring *s, char const *str, long len);
 extern int dstring_printf(struct dstring *s, char const *fmt, ...);
 extern int dstring_setstr(struct dstring *s, char const *str, long len);
 
-extern char *dstring_str(struct dstring const *s);
+extern char const *dstring_str(struct dstring const *s);
 extern char *dstring_at(struct dstring const *s, long i);
 extern long dstring_len(struct dstring const *s);
 

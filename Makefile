@@ -1,6 +1,6 @@
 .POSIX:
 
-CFLAGS = -O2 -Wall -Wextra #-DNDEBUG
+CFLAGS = -Wall -Wextra #-DNDEBUG
 
 OBJS = darray.o dstring.o htable.o
 TESTS = darray_test dstring_test htable_test

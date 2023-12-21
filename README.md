@@ -3,6 +3,7 @@
 Simple generic C99 data structures:
 
 - Dynamic array (`darray`)
+- Dynamic string (`dstring`)
 - Hash table (`htable`)
 
 The structures are basic but pretty fast.

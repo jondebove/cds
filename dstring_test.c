@@ -21,7 +21,7 @@ int main(void)
 	print(&s);
 	dstring_printf(&s, "%s %d", "foo", 2);
 	print(&s);
-	dstring_setcap(&s, s.len);
+	dstring_setcap(&s, s.len + 1);
 	print(&s);
 
 	dstring_destroy(&s);					/* Reset */

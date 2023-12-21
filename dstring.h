@@ -58,6 +58,8 @@ struct dstring {
 	//char scratch[64];
 };
 
+#define DSTRING() {.str = NULL, .len = 0, .cap = 0}
+
 /*! dstring_create initializes a dynamic string `s`.
  * It cannot fail and does not allocate memory.
  */
@@ -80,9 +82,7 @@ void dstring_destroy(struct dstring *s)
 	assert(s);
 
 	free(s->str);
-	s->str = NULL;
-	s->len = 0;
-	s->cap = 0;
+	dstring_create(s);
 }
 
 /*! dstring_setcap sets the maximum capacity of the dynamic string.
@@ -100,13 +100,13 @@ int dstring_setcap(struct dstring *s, long cap)
 		return 0;
 	}
 
-	char *str = (char *)realloc(s->str, cap + 1);  // C++ cast
+	char *str = (char *)realloc(s->str, cap);  // C++ cast
 	if (str) {
 		s->str = str;
 		s->cap = cap;
-		if (s->len > cap) {
-			s->len = cap;
-			s->str[cap] = '\0';
+		if (s->len > cap - 1) {
+			s->len = cap - 1;
+			s->str[s->len] = '\0';
 		}
 		return 0;
 	}
@@ -123,11 +123,11 @@ int dstring_setlen(struct dstring *s, long len)
 	assert(s);
 	assert(len >= 0);
 
-	if (len > s->cap) {
+	if (len > s->cap - 1) {
 		/* test overflow */
-		long grow = s->cap / 2 + 1;
-		grow = s->cap <= LONG_MAX - grow ? s->cap + grow : len;
-		int err = dstring_setcap(s, grow > len ? grow : len);
+		long grow = s->cap / 2 + 4;
+		grow = s->cap <= LONG_MAX - grow ? s->cap + grow : len + 1;
+		int err = dstring_setcap(s, grow > len ? grow : len + 1);
 		if (err) {
 			return err;
 		}
@@ -186,10 +186,14 @@ int dstring_printf(struct dstring *s, char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	int len = vsnprintf(NULL, 0, fmt, ap);
+	int len = vsnprintf(s->str, s->cap, fmt, ap);
 	va_end(ap);
 	if (len < 0) {
 		return -EINVAL;
+	}
+	if (len < s->cap) {
+		s->len = len;
+		return 0;
 	}
 
 	int err = dstring_setlen(s, len);
@@ -198,7 +202,7 @@ int dstring_printf(struct dstring *s, char const *fmt, ...)
 	}
 
 	va_start(ap, fmt);
-	len = vsnprintf(s->str, len + 1, fmt, ap);
+	len = vsnprintf(s->str, s->cap, fmt, ap);
 	va_end(ap);
 
 	assert(len == s->len);
@@ -220,7 +224,7 @@ int dstring_setstr(struct dstring *s, char const *str, long len)
 		return err;
 	}
 
-	memcpy(s->str, str, len);
+	memmove(s->str, str, len);
 	return 0;
 }
 
@@ -228,7 +232,7 @@ int dstring_setstr(struct dstring *s, char const *str, long len)
  * It returns `NULL` if the string is empty.
  */
 inline
-char *dstring_str(struct dstring const *s)
+char const *dstring_str(struct dstring const *s)
 {
 	assert(s);
 
