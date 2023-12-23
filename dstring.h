@@ -28,7 +28,7 @@
 /*!
  * \file dstring.h
  * \author Jonathan Debove
- * \brief Generic dynamic string.
+ * \brief Dynamic string.
  */
 
 #include <assert.h>
@@ -92,10 +92,8 @@ inline
 int dstring_setcap(struct dstring *s, long cap)
 {
 	assert(s);
-	assert(cap >= 0);
-	assert(cap < LONG_MAX);
 
-	if (cap == 0) {
+	if (cap <= 0) {
 		dstring_destroy(s);
 		return 0;
 	}
@@ -121,7 +119,7 @@ inline
 int dstring_setlen(struct dstring *s, long len)
 {
 	assert(s);
-	assert(len >= 0);
+	assert(len >= 0 && len < LONG_MAX);
 
 	if (len > s->cap - 1) {
 		/* test overflow */
@@ -149,29 +147,35 @@ int dstring_concat(struct dstring *s, char const *str, long len)
 	assert(str);
 	assert(len >= 0);
 
-	char *a = s->str + s->len;
-	int err = dstring_setlen(s, s->len + len);
+	long const end = s->len;
+	int err = dstring_setlen(s, end + len);
 	if (err) {
 		return err;
 	}
 
-	memcpy(a, str, len);
+	assert(s->str);
+	memcpy(s->str + end, str, len);
 	return 0;
 }
 
 /*! dstring_chomp removes trailing line feed.
- * It returns `0` on success or `-1` on error.
+ * It returns the number of removed bytes.
  */
 inline
 int dstring_chomp(struct dstring *s)
 {
 	assert(s);
 
+	int n = 0;
 	if (s->len > 0 && s->str[s->len - 1] == '\n') {
 		s->str[--s->len] = '\0';
-		return 0;
+		n++;
 	}
-	return -1;
+	if (s->len > 0 && s->str[s->len - 1] == '\r') {
+		s->str[--s->len] = '\0';
+		n++;
+	}
+	return n;
 }
 
 /*! dstring_printf writes formatted string to `s`.
@@ -236,7 +240,7 @@ char const *dstring_str(struct dstring const *s)
 {
 	assert(s);
 
-	return s->len > 0 ? s->str : "";
+	return s->cap > 0 ? s->str : "";
 }
 
 #if DSTRING_NEGATIVE_INDEX
