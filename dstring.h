@@ -121,6 +121,10 @@ int dstring_setlen(struct dstring *s, long len)
 	assert(s);
 	assert(len >= 0 && len < LONG_MAX);
 
+	if (len == s->len) {
+		return 0;
+	}
+
 	if (len > s->cap - 1) {
 		/* test overflow */
 		long grow = s->cap / 2 + 4;
@@ -134,27 +138,6 @@ int dstring_setlen(struct dstring *s, long len)
 	s->len = len;
 	s->str[len] = '\0';
 
-	return 0;
-}
-
-/*! dstring_concat appends len characters from `str` to `s`.
- * It returns `0` on success or `-ENOMEM` on out of memory.
- */
-inline
-int dstring_concat(struct dstring *s, char const *str, long len)
-{
-	assert(s);
-	assert(str);
-	assert(len >= 0);
-
-	long const end = s->len;
-	int err = dstring_setlen(s, end + len);
-	if (err) {
-		return err;
-	}
-
-	assert(s->str);
-	memcpy(s->str + end, str, len);
 	return 0;
 }
 
@@ -178,6 +161,46 @@ int dstring_chomp(struct dstring *s)
 	return n;
 }
 
+/*! dstring_concat appends len characters from `str` to `s`.
+ * It returns `0` on success or `-ENOMEM` on out of memory.
+ */
+inline
+int dstring_concat(struct dstring *s, char const *str, long len)
+{
+	assert(s);
+	assert(str);
+	assert(len >= 0);
+
+	long const end = s->len;
+	int err = dstring_setlen(s, end + len);
+	if (err) {
+		return err;
+	}
+
+	assert(s->str);
+	memcpy(s->str + end, str, len);
+	return 0;
+}
+
+int dstring_vconcatf(struct dstring *s, char const *fmt, va_list ap);
+
+/*! dstring_concatf concatenates formatted string to `s`.
+ * It returns `0` on success or `-ENOMEM` on out of memory.
+ */
+inline
+int dstring_concatf(struct dstring *s, char const *fmt, ...)
+{
+	assert(s);
+	assert(fmt);
+
+	va_list ap;
+	va_start(ap, fmt);
+	int err = dstring_vconcatf(s, fmt, ap);
+	va_end(ap);
+
+	return err;
+}
+
 /*! dstring_printf writes formatted string to `s`.
  * It returns `0` on success or `-ENOMEM` on out of memory.
  */
@@ -187,30 +210,14 @@ int dstring_printf(struct dstring *s, char const *fmt, ...)
 	assert(s);
 	assert(fmt);
 
+	s->len = 0;
+
 	va_list ap;
-
 	va_start(ap, fmt);
-	int len = vsnprintf(s->str, s->cap, fmt, ap);
-	va_end(ap);
-	if (len < 0) {
-		return -EINVAL;
-	}
-	if (len < s->cap) {
-		s->len = len;
-		return 0;
-	}
-
-	int err = dstring_setlen(s, len);
-	if (err) {
-		return err;
-	}
-
-	va_start(ap, fmt);
-	len = vsnprintf(s->str, s->cap, fmt, ap);
+	int err = dstring_vconcatf(s, fmt, ap);
 	va_end(ap);
 
-	assert(len == s->len);
-	return 0;
+	return err;
 }
 
 /*! dstring_setstr copy len characters from `str` to `s`.
@@ -269,6 +276,18 @@ long dstring_len(struct dstring const *s)
 	assert(s);
 
 	return s->len;
+}
+
+inline
+int dstring_compare(struct dstring const *s1, struct dstring const *s2)
+{
+	int n = memcmp(s1->str, s2->str,
+			s1->len < s2->len ?
+			s1->len : s2->len);
+	if (n != 0) {
+		return n;
+	}
+	return s1->len - s2->len;
 }
 
 #ifdef __cplusplus

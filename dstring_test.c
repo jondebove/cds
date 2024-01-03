@@ -19,7 +19,7 @@ int main(void)
 	print(&s);
 	dstring_concat(&s, "foobar", 2);
 	print(&s);
-	dstring_printf(&s, "%s %d", "foo", 2);
+	dstring_concatf(&s, "+%s %d", "foo", 2);
 	print(&s);
 	dstring_setcap(&s, s.len + 1);
 	print(&s);

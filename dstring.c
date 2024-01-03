@@ -22,6 +22,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdarg.h>
+
 #include "dstring.h"
 
 extern void dstring_create(struct dstring *s);
@@ -32,10 +34,45 @@ extern int dstring_setlen(struct dstring *s, long len);
 
 extern int dstring_chomp(struct dstring *s);
 extern int dstring_concat(struct dstring *s, char const *str, long len);
+extern int dstring_concatf(struct dstring *s, char const *fmt, ...);
 extern int dstring_printf(struct dstring *s, char const *fmt, ...);
 extern int dstring_setstr(struct dstring *s, char const *str, long len);
 
 extern char const *dstring_str(struct dstring const *s);
 extern char *dstring_at(struct dstring const *s, long i);
 extern long dstring_len(struct dstring const *s);
+
+extern int dstring_compare(struct dstring const *s1, struct dstring const *s2);
+
+int dstring_vconcatf(struct dstring *s, char const *fmt, va_list ap)
+{
+	assert(s);
+	assert(fmt);
+
+	int const len = s->len;
+	va_list args;
+
+	va_copy(args, ap);
+	int n = vsnprintf(s->str + len, s->cap - len, fmt, args);
+	va_end(args);
+	if (n < 0) {
+		return -EINVAL;
+	}
+	if (n < s->cap - len) {
+		s->len += n;
+		return 0;
+	}
+
+	int err = dstring_setlen(s, s->len + n);
+	if (err) {
+		return err;
+	}
+
+	va_copy(args, ap);
+	n = vsnprintf(s->str + len, s->cap - len, fmt, ap);
+	va_end(args);
+
+	assert(n == s->len - len);
+	return 0;
+}
 
