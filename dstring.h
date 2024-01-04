@@ -182,9 +182,15 @@ int dstring_concat(struct dstring *s, char const *str, long len)
 	return 0;
 }
 
+/*! dstring_vconcatf concatenates `s` with a formatted string
+ * defined by `fmt` and a `va_list`.
+ * `ap` is leave in an invalid state after the call.
+ * It returns `0` on success or `-ENOMEM` on out of memory.
+ */
 int dstring_vconcatf(struct dstring *s, char const *fmt, va_list ap);
 
-/*! dstring_concatf concatenates formatted string to `s`.
+/*! dstring_concatf concatenates `s` with a formatted string
+ * defined by `fmt` and a variable number of arguments.
  * It returns `0` on success or `-ENOMEM` on out of memory.
  */
 inline
@@ -278,6 +284,10 @@ long dstring_len(struct dstring const *s)
 	return s->len;
 }
 
+/*! dstring_compare compares dstrings.
+ * It returns an integer, lesser than, equal to or greater than 0
+ * if `s1` found to be less than, to match or greater than `s2`.
+ */
 inline
 int dstring_compare(struct dstring const *s1, struct dstring const *s2)
 {
