@@ -178,7 +178,7 @@ void *darray_pop(struct darray *da, long n)
 }
 
 #if DARRAY_NEGATIVE_INDEX
-#	define DARRAY_INDEX(a, i) ((i) >= 0 ? (i) : (a)->len - (i))
+#	define DARRAY_INDEX(a, i) ((i) >= 0 ? (i) : (a)->len + (i))
 #else
 #	define DARRAY_INDEX(a, i) (assert((i) >= 0), (i))
 #endif
