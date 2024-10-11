@@ -21,7 +21,7 @@ int main(void)
 	e = darray_splice(&a, 3, 2, 1);				/* Splice */
 	*e = 42;
 
-	for (i = 0; i < darray_len(&a); i++) {			/* Traversal */
+	for (i = 0; i < a.len; i++) {				/* Traversal */
 		e = darray_at(&a, i);
 		printf("at: [%d] = %d\n", i, *e);
 	}

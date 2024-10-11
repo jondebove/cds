@@ -32,15 +32,7 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifndef DARRAY_NEGATIVE_INDEX
-/*! Flag to allow negative indexing to access the end of the array. */
-#define DARRAY_NEGATIVE_INDEX	1
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,72 +42,61 @@ extern "C" {
  * Do not modify its fields unless you know what you are doing.
  */
 struct darray {
-	/* private */
 	char *data;
 	long len;
 	long cap;
 	long inc;
 	//int err;
-	//char scratch[64];
 };
 
 /*! darray_create initializes a dynamic array `da` of element of size `inc`.
  * It cannot fail and does not allocate memory.
  */
-inline
-void darray_create(struct darray *da, long inc)
-{
-	assert(da);
-	assert(inc > 0);
-
-	da->data = NULL;
-	da->cap = 0;
-	da->len = 0;
-	da->inc = inc;
-}
+void darray_create(struct darray *da, long inc);
 
 /*! darray_destroy frees the memory space internal to the dynamic array.
  * It does not free the memory allocated by the user for the darray nor
  * the entries. On output, the dynamic array is empty and in a valid state.
  */
+void darray_destroy(struct darray *da);
+
+/*! darray_data returns a pointer to the first element.
+ * Returns `NULL` if array is empty.
+ */
 inline
-void darray_destroy(struct darray *da)
+void *darray_data(struct darray const *da)
 {
 	assert(da);
 
-	free(da->data);
-	da->data = NULL;
-	da->len = 0;
-	da->cap = 0;
+	return da->len > 0 ? da->data : NULL;
+}
+
+/*! Flag to allow negative indexing to access the end of the array. */
+#ifdef DARRAY_USE_NEGATIVE_INDEXING
+#	define DARRAY_INDEX(a, i) ((i) >= 0 ? (i) : (a)->len + (i))
+#else
+#	define DARRAY_INDEX(a, i) (i)
+#endif
+
+/*! darray_at returns a pointer to the `i`th element.
+ * Returns `NULL` if index is out of bounds.
+ */
+inline
+void *darray_at(struct darray const *da, long i)
+{
+	assert(da);
+
+	i = DARRAY_INDEX(da, i);
+
+	return i >= 0 && i < da->len ?
+		da->data + i * da->inc :
+		NULL;
 }
 
 /*! darray_setcap sets the maximum capacity of the dynamic array.
  * It returns `0` on success or `-ENOMEM` on out of memory.
  */
-inline
-int darray_setcap(struct darray *da, long cap)
-{
-	assert(da);
-	assert(cap >= 0);
-	assert(cap <= LONG_MAX / da->inc);
-
-	if (cap == 0) {
-		darray_destroy(da);
-		return 0;
-	}
-
-	char *data = (char *)realloc(da->data, cap * da->inc);  // C++ cast
-	if (data) {
-		da->data = data;
-		da->cap = cap;
-		if (da->len > cap) {
-			da->len = cap;
-		}
-		return 0;
-	}
-
-	return -ENOMEM;
-}
+int darray_setcap(struct darray *da, long cap);
 
 /*! darray_setlen sets the number of elements of the dynamic array.
  * It returns `0` on success or `-ENOMEM` on out of memory.
@@ -156,6 +137,7 @@ void *darray_push(struct darray *da, long n)
 	if (darray_setlen(da, len + n)) {
 		return NULL;
 	}
+
 	return da->data + len * da->inc;
 }
 
@@ -177,118 +159,22 @@ void *darray_pop(struct darray *da, long n)
 	return NULL;
 }
 
-#if DARRAY_NEGATIVE_INDEX
-#	define DARRAY_INDEX(a, i) ((i) >= 0 ? (i) : (a)->len + (i))
-#else
-#	define DARRAY_INDEX(a, i) (assert((i) >= 0), (i))
-#endif
-
 /*! darray_splice removes `rem` elements and inserts `ins` elements at
  * index `off`. The array grows and shrinks as necessary.
  * Returns a pointer to the element at index `off`, or `NULL` if out of memory.
  */
-inline
-void *darray_splice(struct darray *da, long off, long rem, long ins)
-{
-	assert(da);
-	assert(rem >= 0);
-	assert(ins >= 0);
-	assert(ins - rem <= LONG_MAX - da->len);	/* overflow */
-
-	off = DARRAY_INDEX(da, off);
-	assert(off + rem <= da->len);
-
-	if (darray_setlen(da, da->len - rem + ins)) {
-		return NULL;
-	}
-
-	long const inc = da->inc;
-	char *const a = da->data + off * inc;
-	memmove(a + ins * inc, a + rem * inc, (da->len - off - ins) * inc);
-	return a;
-}
+void *darray_splice(struct darray *da, long off, long rem, long ins);
 
 /*! darray_removeswap removes the element at index `i`.
  * Order of the array is not preserved but the operation is faster.
  * Returns a pointer to the swapped element or `NULL` if index is out of bounds.
  */
-inline
-void *darray_removeswap(struct darray *da, long i)
-{
-	assert(da);
-
-	i = DARRAY_INDEX(da, i);
-
-	if (i < da->len) {
-		void const *const last = darray_pop(da, 1);
-		if (last) {
-			long const inc = da->inc;
-			return memmove(da->data + i * inc, last, inc);
-		}
-	}
-	return NULL;
-}
+void *darray_removeswap(struct darray *da, long i);
 
 /*! darray_swap swaps the elements at index `i` and `j`.
  * Returns `NULL` on error.
  */
-inline
-void *darray_swap(struct darray *da, long i, long j)
-{
-	assert(da);
-
-	i = DARRAY_INDEX(da, i);
-	j = DARRAY_INDEX(da, j);
-
-	if (i < da->len && j < da->len && i != j) {
-		char *const tmp = (char *)darray_push(da, 1);  // C++ cast
-		if (tmp) {
-			long const inc = da->inc;
-			char *const ai = da->data + i * inc;
-			char *const aj = da->data + j * inc;
-			memcpy(tmp, ai, inc);
-			memcpy(ai, aj, inc);
-			memcpy(aj, tmp, inc);
-			return darray_pop(da, 1);
-		}
-	}
-	return NULL;
-}
-
-/*! darray_data returns a pointer to the first element.
- * Returns `NULL` if array is empty.
- */
-inline
-void *darray_data(struct darray const *da)
-{
-	assert(da);
-
-	return da->len > 0 ? da->data : NULL;
-}
-
-/*! darray_at returns a pointer to the `i`th element.
- * Returns `NULL` if index is out of bounds.
- */
-inline
-void *darray_at(struct darray const *da, long i)
-{
-	assert(da);
-
-	i = DARRAY_INDEX(da, i);
-
-	return i < da->len ?
-		da->data + i * da->inc :
-		NULL;
-}
-
-/*! darray_len returns the number of elements. */
-inline
-long darray_len(struct darray const *da)
-{
-	assert(da);
-
-	return da->len;
-}
+void *darray_swap(struct darray *da, long i, long j);
 
 /*! DARRAY_FOREACH iterates over all the elements of the dynamic array. */
 #define DARRAY_FOREACH(elem, darray)					\
