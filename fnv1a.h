@@ -51,11 +51,12 @@ extern "C" {
 /* Stupid macro to help doxygen */
 #define STATIC static
 
-/*! fnv1a_buf computes the FNV1a hash code of a memory buffer. */
+/*! fnv1a_mem computes the FNV1a hash code of a memory area. */
 STATIC inline
-unsigned long fnv1a_buf(unsigned char const *b, size_t len)
+unsigned long fnv1a_mem(void const *s, size_t len)
 {
 	unsigned long h = FNV1A_BASE;
+	unsigned char const *b = (unsigned char const *)s;
 	while (len--) {
 		int c = *b++;
 		h = FNV1A_MULT * (h ^ c);
