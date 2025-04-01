@@ -29,16 +29,19 @@
  * \file fnv1a.h
  * \author Jonathan Debove
  * \brief FNV1a hash functions.
+ *
+ * http://www.isthe.com/chongo/tech/comp/fnv/index.html
+ *
  */
 
 #include <limits.h>
 #include <stddef.h>
 
 #if ULONG_MAX == 0xffffffff
-#	define FNV1A_BASE 0x811c9dc5
+#	define FNV1A_SEED 0x811c9dc5
 #	define FNV1A_MULT 0x01000193
 #elif ULONG_MAX == 0xffffffffffffffff
-#	define FNV1A_BASE 0xCBF29CE484222325
+#	define FNV1A_SEED 0xCBF29CE484222325
 #	define FNV1A_MULT 0x00000100000001b3
 #else
 #	error ULONG_WIDTH different from 32 ou 64 not implemented.
@@ -48,32 +51,36 @@
 extern "C" {
 #endif
 
-/* Stupid macro to help doxygen */
-#define STATIC static
-
-/*! fnv1a_mem computes the FNV1a hash code of a memory area. */
-STATIC inline
-unsigned long fnv1a_mem(void const *s, size_t len)
+/*!
+ * fnv1a_mem computes the hash code of a memory area of len bytes
+ * pointed to by s using the FNV1a algorithm.
+ * seed enables to chain FNV1a computations or to introduce a
+ * user-defined seed (FNV1A_SEED macro is the official value).
+ */
+static inline
+unsigned long fnv1a_mem(void const *s, size_t len, unsigned long seed)
 {
-	unsigned long h = FNV1A_BASE;
 	unsigned char const *b = (unsigned char const *)s;
 	while (len--) {
 		int c = *b++;
-		h = FNV1A_MULT * (h ^ c);
+		seed = FNV1A_MULT * (seed ^ c);
 	}
-	return h;
+	return seed;
 }
 
-/*! fnv1a_str computes the FNV1a hash code of a string. */
-STATIC inline
-unsigned long fnv1a_str(char const *s)
+/*!
+ * fnv1a_str computes the FNV1a hash code of a string s.
+ * seed enables to chain FNV1a computations or to introduce a
+ * user-defined seed (FNV1A_SEED macro is the official value).
+ */
+static inline
+unsigned long fnv1a_str(char const *s, unsigned long seed)
 {
-	unsigned long h = FNV1A_BASE;
 	int c;
 	while ((c = *s++)) {
-		h = FNV1A_MULT * (h ^ c);
+		seed = FNV1A_MULT * (seed ^ c);
 	}
-	return h;
+	return seed;
 }
 
 #ifdef __cplusplus
