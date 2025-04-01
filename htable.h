@@ -88,6 +88,7 @@ int htable_resize(struct htable *ht, long cap);
  * It can fail and set `*err` to:
  * - `-EEXIST` if an entry with key already exists.
  *   A pointer to the existing entry is returned.
+ * - `-EINVAL` if key and entry are incompatible. `NULL` is returned.
  * - `-ENOMEM` on out of memory. `NULL` is returned.
  */
 void *htable_enter(struct htable *ht,
@@ -112,8 +113,8 @@ void *htable_delete(struct htable *ht, void const *key);
 
 /*! htable_delete_unsafe removes an entry from the hash table.
  * It is undefined behavior if `entry` does not point to the hash table.
- * It returns `0` on success, `-ENOENT` if `entry` points to an empty
- * bucket and `-EINVAL` if it is `NULL`.
+ * It returns `0` on success and `-ENOENT` if `entry` points to an empty
+ * bucket.
  */
 int htable_delete_unsafe(struct htable *ht, void const *entry);
 

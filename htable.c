@@ -222,7 +222,11 @@ void *htable_enter(struct htable *ht,
 		void const *key, void const *entry, int *err)
 {
 	assert(ht);
-	assert(ht->hasher->comp(key, entry) == 0);
+
+	if (ht->hasher->comp(key, entry)) {
+		*err = -EINVAL;
+		return NULL;
+	}
 
 	void *e = htable_enter_unsafe(ht, key, err);
 	if (*err == 0) {
@@ -274,10 +278,7 @@ void *htable_delete(struct htable *ht, void const *key)
 int htable_delete_unsafe(struct htable *ht, void const *entry)
 {
 	assert(ht);
-
-	if (!entry) {
-		return -EINVAL;
-	}
+	assert(entry);
 
 	long const i = ((char *)entry - ht->data) / ht->inc;
 	if (ht->table[i].hash >= HBUCKET_USED) {
