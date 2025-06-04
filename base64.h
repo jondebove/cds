@@ -28,6 +28,18 @@
 #include <stddef.h>
 
 /**
+ * BASE64_ENCODEDSIZE returns the length in bytes of the base64
+ * encoding of an input buffer of length n.
+ */
+#define BASE64_ENCODEDSIZE(n) ((((n) + 2) / 3) * 4)
+
+/**
+ * BASE64_DECODEDSIZE returns the maximum length in bytes of the
+ * decoded data corresponding to n bytes of base64-encoded data.
+ */
+#define BASE64_DECODEDSIZE(n) (((n) / 4) * 3)
+
+/**
  * base64_encode encodes n bytes from the object beginning at src.
  * It writes base64_encodedsize(n) bytes to dst and returns a pointer
  * to the byte following the last written byte.
@@ -38,26 +50,8 @@ char *base64_encode(char *dst, void const *src, size_t n);
  * base64_decode decodes n bytes from the base64-encoded data beginning
  * at src. It writes at most base64_decodedsize(n) bytes to dst and
  * returns a pointer to the byte following the last written byte.
- * If src contains invalid base64 data, it will return NULL.
+ * If src contains invalid base64 data (including \r, \n), it will return NULL.
  */
 void *base64_decode(void *dst, char const *src, size_t n);
-
-/**
- * base64_encodedsize returns the length in bytes of the base64
- * encoding of an input buffer of length n.
- */
-static inline size_t base64_encodedsize(size_t n)
-{
-	return ((n + 2) / 3) * 4;
-}
-
-/**
- * base64_decodedsize returns the maximum length in bytes of the
- * decoded data corresponding to n bytes of base64-encoded data.
- */
-static inline size_t base64_decodedsize(size_t n)
-{
-	return (n / 4) * 3;
-}
 
 #endif	/* BASE64_H */

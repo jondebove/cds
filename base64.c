@@ -1,4 +1,4 @@
-/* Copyright (c) 2024, Jonathan Debove
+/* Copyright (c) 2024,2025, Jonathan Debove
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -81,9 +81,11 @@ char *base64_encode(char *dst, void const *src, size_t n)
 	return dst;
 }
 
-#define DECODE_CHAR(c, s) do {			\
-	(c) = decoding[(int)(*(s)++)];		\
-	if ((c) == invalid) return NULL;	\
+#define DECODE_CHAR(s, v, n) do {		\
+	uint8_t c = decoding[(int)(*(s)++)];	\
+	if (c == invalid) return NULL;		\
+	if ((n) == 18) (v) = (uint32_t)c << 18;	\
+	else (v) |= (uint32_t)c << n;		\
 } while (0)
 
 void *base64_decode(void *dst, char const *src, size_t n)
@@ -93,72 +95,94 @@ void *base64_decode(void *dst, char const *src, size_t n)
 
 	if (decoding[256] != invalid) {
 		memset(decoding, invalid, sizeof(decoding));
-		for (int i = 0; i < (int)sizeof(encoding); i++) {
+		for (int i = 0; i < (int)sizeof(encoding) - 1; i++) {
 			decoding[(int)encoding[i]] = i;
 		}
 	}
 
 	uint8_t *d = dst;
-	if (n < 4) {
+	if (n == 0) {
+		return d;
+	}
+	if (n % 4 != 0) {
 		return NULL;
 	}
 
 	char const *end = src + ((n - 4) / 4) * 4;
 	uint32_t val = 0;
-	uint8_t out;
 	while (src != end) {
-		DECODE_CHAR(out, src);
-		val  = (uint32_t)out << 18;
-		DECODE_CHAR(out, src);
-		val |= (uint32_t)out << 12;
-		DECODE_CHAR(out, src);
-		val |= (uint32_t)out << 6;
-		DECODE_CHAR(out, src);
-		val |= (uint32_t)out << 0;
+		DECODE_CHAR(src, val, 18);
+		DECODE_CHAR(src, val, 12);
+		DECODE_CHAR(src, val,  6);
+		DECODE_CHAR(src, val,  0);
 
 		*d++ = val >> 16;
 		*d++ = val >> 8;
 		*d++ = val >> 0;
 	}
 
-	DECODE_CHAR(out, src);
-	val  = (uint32_t)out << 18;
-	DECODE_CHAR(out, src);
-	val |= (uint32_t)out << 12;
+	DECODE_CHAR(src, val, 18);
+	DECODE_CHAR(src, val, 12);
 	*d++ = val >> 16;
 	if (*src == padding) {
 		return d;
 	}
 
-	DECODE_CHAR(out, src);
-	val |= (uint32_t)out << 6;
+	DECODE_CHAR(src, val,  6);
 	*d++ = val >> 8;
 	if (*src == padding) {
 		return d;
 	}
 
-	DECODE_CHAR(out, src);
-	val |= (uint32_t)out << 0;
+	DECODE_CHAR(src, val,  0);
 	*d++ = val >> 0;
 	return d;
 }
 
 #ifdef TEST
 #include <stdio.h>
+
+static
+void test_encode(void const *data, size_t size, char const *want)
+{
+	char got[64];
+	assert(sizeof(got) >= BASE64_ENCODEDSIZE(size));
+
+	size = base64_encode(got, data, size) - got;
+	assert(size == strlen(want));
+	assert(memcmp(got, want, size) == 0);
+}
+
+static
+void test_decode(char const *data, size_t size, void const *want, size_t len)
+{
+	char got[64];
+	assert(sizeof(got) >= BASE64_DECODEDSIZE(size));
+
+	char *end = base64_decode(got, data, size);
+	assert(end); /* test if error */
+	assert((size_t)(end - got) == len);
+	assert(memcmp(got, want, len) == 0);
+}
+
 int main(void)
 {
-	uint64_t src = 0x0123456789ABCDEF;
-	char dst[base64_decodedsize(sizeof(src)) + 1];
-	char *p;
+	/* Test vectors from RFC 4648 */
+	char const dec[] = "foobar";
+	char const *enc[] = {
+		"",
+		"Zg==",
+		"Zm8=",
+		"Zm9v",
+		"Zm9vYg==",
+		"Zm9vYmE=",
+		"Zm9vYmFy",
+	};
 
-	p = base64_encode(dst, &src, sizeof(src));
-	*p = '\0';
-	printf("0x%lx => %s\n", src, dst);
-
-	p[-4] = '\r';
-	src = 0;
-	p = base64_decode(&src, dst, p - dst);
-	printf("[%d] 0x%lx <= %s\n", !p, src, dst);
+	for (size_t i = 0; i < sizeof(dec); i++) {
+		test_encode(dec, i, enc[i]);
+		test_decode(enc[i], strlen(enc[i]), dec, i);
+	}
 
 	return 0;
 }
