@@ -62,6 +62,8 @@ struct hbucket {
 #define HTABLE_SIZE(shift)	(1L << (shift))
 #define HTABLE_CAP(shift)	((1L << ((shift) - 2)) * 3)
 
+static struct hbucket table_empty[1UL << HTABLE_SHIFT_MIN] = { 0 };
+
 void htable_create(struct htable *ht, long inc, unsigned long seed,
 		struct htable_interface const *hasher)
 {
@@ -72,7 +74,7 @@ void htable_create(struct htable *ht, long inc, unsigned long seed,
 	assert(hasher->comp);
 
 	ht->data = NULL;
-	ht->table = NULL;
+	ht->table = table_empty;
 
 	ht->inc = inc;
 	ht->len = 0;
@@ -89,8 +91,10 @@ void htable_destroy(struct htable *ht)
 {
 	assert(ht);
 
-	free(ht->table);
-	ht->table = NULL;
+	if (ht->table != table_empty) {
+		free(ht->table);
+		ht->table = table_empty;
+	}
 	ht->data = NULL;
 	ht->mask = -1;
 	ht->shift = HTABLE_SHIFT_MIN;
