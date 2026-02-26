@@ -95,6 +95,7 @@ void htable_destroy(struct htable *ht)
 		free(ht->table);
 		ht->table = table_empty;
 	}
+	free(ht->data);
 	ht->data = NULL;
 	ht->mask = -1;
 	ht->shift = HTABLE_SHIFT_MIN;
@@ -102,8 +103,7 @@ void htable_destroy(struct htable *ht)
 	ht->cap = 0;
 }
 
-static
-int htable_rehash(struct htable *ht, int shift)
+static int rehash(struct htable *ht, int shift)
 {
 	assert(ht);
 	assert(shift >= 2 && shift <= HTABLE_BITS - 1);
@@ -115,12 +115,13 @@ int htable_rehash(struct htable *ht, int shift)
 	struct htable htnew;
 	htable_create(&htnew, inc, ht->seed, ht->hasher);
 
-	htnew.table = malloc(size * (sizeof(htnew.table[0]) + inc));
-	if (!htnew.table) {
+	htnew.table = malloc(size * sizeof(htnew.table[0]));
+	htnew.data = malloc(size * inc);
+	if (!htnew.data || !htnew.table) {
+		htable_destroy(&htnew);
 		return -ENOMEM;
 	}
 
-	htnew.data = (char *)htnew.table + size * sizeof(htnew.table[0]);
 	htnew.cap = HTABLE_CAP(shift);
 	htnew.mask = size - 1;
 	htnew.shift = shift;
@@ -163,21 +164,19 @@ int htable_resize(struct htable *ht, long cap)
 			ht->shift : HTABLE_SHIFT_MIN;
 		for (; HTABLE_CAP(shift) < cap; shift++);
 		return shift != ht->shift ?
-			htable_rehash(ht, shift) : 0;
+			rehash(ht, shift) : 0;
 	}
 
 	return -ENOSPC;
 }
 
-static
-unsigned long ht_hashof(struct htable const *ht, void const *key)
+static unsigned long hashof(struct htable const *ht, void const *key)
 {
 	unsigned long hash = ht->hasher->hash(key, ht->seed);
 	return hash >= HBUCKET_USED ? hash : HBUCKET_USED;
 }
 
-static
-int ht_isequal(struct htable const *ht, long idx, unsigned long hash,
+static int equal(struct htable const *ht, long idx, unsigned long hash,
 		void const *key)
 {
 	return ht->table[idx].hash == hash &&
@@ -192,12 +191,12 @@ void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
 	if (ht->cap == 0) {
 		int const shift = ht->shift +
 			(ht->len > HTABLE_CAP(ht->shift) / 2);
-		if ((*err = htable_rehash(ht, shift))) {
+		if ((*err = rehash(ht, shift))) {
 			return NULL;
 		}
 	}
 
-	unsigned long hash = ht_hashof(ht, key);
+	unsigned long hash = hashof(ht, key);
 	long i;
 	long j = -1;
 	HTABLE_PROBE_LOOP(i, hash, ht,
@@ -213,7 +212,7 @@ void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
 			return &ht->data[i * ht->inc];
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
 			j = j < 0 ? i : j;
-		} else if (ht_isequal(ht, i, hash, key)) {
+		} else if (equal(ht, i, hash, key)) {
 			*err = -EEXIST;
 			return &ht->data[i * ht->inc];
 		}
@@ -243,14 +242,14 @@ void *htable_find(struct htable const *ht, void const *key)
 {
 	assert(ht);
 
-	unsigned long hash = ht_hashof(ht, key);
+	unsigned long hash = hashof(ht, key);
 	long i;
 	HTABLE_PROBE_LOOP(i, hash, ht,
 		if (ht->table[i].hash == HBUCKET_EMPTY) {
 			return NULL;
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
 			continue;
-		} else if (ht_isequal(ht, i, hash, key)) {
+		} else if (equal(ht, i, hash, key)) {
 			return &ht->data[i * ht->inc];
 		}
 	);
@@ -262,14 +261,14 @@ void *htable_delete(struct htable *ht, void const *key)
 {
 	assert(ht);
 
-	unsigned long hash = ht_hashof(ht, key);
+	unsigned long hash = hashof(ht, key);
 	long i;
 	HTABLE_PROBE_LOOP(i, hash, ht,
 		if (ht->table[i].hash == HBUCKET_EMPTY) {
 			return NULL;
 		} else if (ht->table[i].hash == HBUCKET_TOMB) {
 			continue;
-		} else if (ht_isequal(ht, i, hash, key)) {
+		} else if (equal(ht, i, hash, key)) {
 			ht->table[i].hash = HBUCKET_TOMB;
 			ht->len--;
 			return &ht->data[i * ht->inc];
