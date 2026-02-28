@@ -44,17 +44,17 @@ static bool less(struct heap *h, long i, long j)
 static void swap(struct heap *h, long i, long j)
 {
 	assert(h);
+	assert(h->tmp);
 	assert(i >= 0 && i < h->len);
 	assert(j >= 0 && j < h->len);
 
 	if (i != j) {
 		void *const a = &h->data[i * h->inc];
 		void *const b = &h->data[j * h->inc];
-		void *const t = &h->data[h->cap * h->inc];
 
-		memcpy(t, a, h->inc);
+		memcpy(h->tmp, a, h->inc);
 		memcpy(a, b, h->inc);
-		memcpy(b, t, h->inc);
+		memcpy(b, h->tmp, h->inc);
 	}
 }
 
@@ -98,21 +98,12 @@ static bool down(struct heap *h, long i0, long n)
 	return i > i0;
 }
 
-#if 0
-void heapify(struct heap *h)
-{
-	long i;
-	for (i = h->len / 2 - 1; i >= 0; i--) {
-		down(h, i, h->len);
-	}
-}
-#endif
-
 struct heap *heap_create(struct heap *h, long inc,
 		bool (*less)(void const *a, void const *b, void *ctx),
 		void *ctx)
 {
 	if (h && inc > 0) {
+		h->tmp = NULL;
 		h->data = NULL;
 		h->len = 0;
 		h->cap = 0;
@@ -125,7 +116,7 @@ struct heap *heap_create(struct heap *h, long inc,
 
 void heap_destroy(struct heap *h)
 {
-	free(h->data);
+	free(h->tmp);
 	memset(h, 0, sizeof(*h));
 }
 
@@ -136,11 +127,12 @@ int heap_insert(struct heap *h, void const *x)
 		if (grow > LONG_MAX / h->inc - h->cap) {
 			return -ERANGE;
 		}
-		char *data = realloc(h->data, (h->cap + grow + 1) * h->inc);
+		char *data = realloc(h->tmp, (h->cap + grow + 1) * h->inc);
 		if (!data) {
 			return -ENOMEM;
 		}
-		h->data = data;
+		h->tmp = data;
+		h->data = data + h->inc;
 		h->cap += grow;
 	}
 
@@ -171,5 +163,59 @@ void heap_update(struct heap *h, long i)
 {
 	if (!down(h, i, h->len)) {
 		up(h, i);
+	}
+}
+
+/*
+ * Heap sort.
+ */
+struct heap_sort_ctx {
+	int (*cmp)(void const *a, void const *b, void *ctx);
+	void *ctx;
+};
+
+static bool heap_sort_less(void const *a, void const *b, void *ctx)
+{
+	struct heap_sort_ctx *c = ctx;
+	/* > 0 Because the array will be left in reverse order after
+	   heap_remove. */
+	return c->cmp(a, b, c->ctx) > 0;
+}
+
+void heap_sort(void *base, size_t n, size_t size,
+		int (*cmp)(void const *a, void const *b, void *ctx), void *ctx)
+{
+	assert(base);
+	assert(n);
+	assert(size);
+
+	/* To be in-place, we do not call create, destroy and insert.
+	   We use the memory of the input array but we still need some
+	   memory to be able to swap... If it is not enough, abort. */
+	char tmp[256];
+	if (size > sizeof(tmp)) {
+		abort();
+	}
+
+	struct heap_sort_ctx c = { cmp, ctx };
+	struct heap h = {
+		.tmp = tmp,
+		.data = base,
+		.len = n,
+		.cap = n,
+		.inc = size,
+		.less = heap_sort_less,
+		.ctx = &c,
+	};
+
+	/* Heapify. */
+	size_t i = n / 2;
+	while (i--) {
+		down(&h, i, n);
+	}
+
+	/* Sorting in-place. */
+	while (n--) {
+		heap_remove(&h, 0);
 	}
 }

@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 struct heap {
+	void *tmp;
 	char *data;
 	long len;
 	long cap;
@@ -70,6 +71,9 @@ void heap_update(struct heap *h, long i);
 	for (long h__idx = 0;						\
 			((elem) = heap_at((heap), h__idx));		\
 			h__idx++)
+
+void heap_sort(void *base, size_t n, size_t size,
+		int (*cmp)(void const *a, void const *b, void *ctx), void *ctx);
 
 #ifdef __cplusplus
 }
