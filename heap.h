@@ -38,6 +38,9 @@
 extern "C" {
 #endif
 
+/*! Generic dynamic heap.
+ * Do not modify its fields unless you know what you are doing.
+ */
 struct heap {
 	void *tmp;
 	char *data;
@@ -49,29 +52,58 @@ struct heap {
 	void *ctx;
 };
 
+/*! heap_create initializes a heap `h` containing elements of size `inc`.
+ * The heap will be ordered according to the comparison function `less`.
+ * It cannot fail and does not allocate memory.
+ */
 struct heap *heap_create(struct heap *h, long inc,
 		bool (*less)(void const *a, void const *b, void *ctx),
 		void *ctx);
 
+/*! heap_destroy frees the memory space internal to the heap.
+ * It does not free the memory allocated by the user for the heap nor
+ * the entries.
+ */
 void heap_destroy(struct heap *h);
 
-static inline
-void *heap_at(struct heap const *h, long i)
+/*! heap_at returns a pointer to the `i`th element.
+ * Returns `NULL` if index is out of bounds.
+ */
+static inline void *heap_at(struct heap const *h, long i)
 {
 	return i >= 0 && i < h->len ? h->data + i * h->inc : NULL;
 }
 
+/*! heap_len returns the number of elements in the heap `h`. */
+static inline long heap_len(struct heap const *h)
+{
+	return h->len;
+}
+
+/*! heap_insert inserts an element in the heap.
+ * It returns 0 on success and `-ENOMEM` if out of memory.
+ */
 int heap_insert(struct heap *h, void const *x);
 
+/*! heap_remove removes the `i`-th element from the heap.
+ * It returns a pointer to the value or `NULL` if `i` is out of bounds.
+ */
 void *heap_remove(struct heap *h, long i);
 
+/*! heap_update fixes the heap in case the element `i` has been updated. */
 void heap_update(struct heap *h, long i);
 
+/*! HEAP_FOREACH iterates over all the elements of the heap. */
 #define HEAP_FOREACH(elem, heap)					\
 	for (long h__idx = 0;						\
 			((elem) = heap_at((heap), h__idx));		\
 			h__idx++)
 
+/*! heap_sort sorts an array with `n` elements of size `size`.
+ * The `base` argument points to the start of the array.
+ * The contents of the array are sorted in ascending order according to the
+ * comparison function pointed to by `cmp`.
+ */
 void heap_sort(void *base, size_t n, size_t size,
 		int (*cmp)(void const *a, void const *b, void *ctx), void *ctx);
 

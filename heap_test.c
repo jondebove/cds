@@ -20,12 +20,12 @@ int main(void)
 		heap_insert(&h, &i);				/* Insert */
 	}
 
-	for (i = 0; i < h.len; i++) {				/* Traversal */
+	for (i = 0; i < heap_len(&h); i++) {			/* Traversal */
 		e = heap_at(&h, i);
 		printf("at: [%d] = %d\n", i, *e);
 	}
 
-	while (h.len > 0) {					/* Remove */
+	while (heap_len(&h) > 0) {				/* Remove */
 		e = heap_remove(&h, 0);
 		printf("remove: %d\n", *e);
 	}
