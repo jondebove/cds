@@ -22,53 +22,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CDS_FNV1A_H
-#define CDS_FNV1A_H
+#include "fnv1a.h"
 
-/*!
- * \file fnv1a.h
- * \author Jonathan Debove
- * \brief FNV1a hash functions.
- *
- * http://www.isthe.com/chongo/tech/comp/fnv/index.html
- */
-
-#include <limits.h>
-#include <stddef.h>
-
-#if ULONG_MAX == 0xffffffffUL
-#	define FNV1A_SEED 0x811c9dc5UL
-#	define FNV1A_MULT 0x01000193UL
-#elif ULONG_MAX == 0xffffffffffffffffUL
-#	define FNV1A_SEED 0xcbf29ce484222325UL
-#	define FNV1A_MULT 0x00000100000001b3UL
-#else
-#	error ULONG_WIDTH different from 32 ou 64 not implemented.
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/*!
- * fnv1a_mem computes the hash code of a memory area of len bytes
- * pointed to by s using the FNV1a algorithm.
- * seed enables to chain FNV1a computations or to introduce a
- * user-defined seed. One may use FNV1A_SEED to reproduce the official
- * FNV1a hash function.
- */
-unsigned long fnv1a_mem(void const *s, size_t len, unsigned long seed);
-
-/*!
- * fnv1a_str computes the FNV1a hash code of a string s.
- * seed enables to chain FNV1a computations or to introduce a
- * user-defined seed. One may use FNV1A_SEED to reproduce the official
- * FNV1a hash function.
- */
-unsigned long fnv1a_str(char const *s, unsigned long seed);
-
-#ifdef __cplusplus
+unsigned long fnv1a_mem(void const *s, size_t len, unsigned long seed)
+{
+	unsigned char const *b = (unsigned char const *)s;
+	while (len--) {
+		int c = *b++;
+		seed = FNV1A_MULT * (seed ^ c);
+	}
+	return seed;
 }
-#endif
 
-#endif	/* CDS_FNV1A_H */
+unsigned long fnv1a_str(char const *s, unsigned long seed)
+{
+	int c;
+	while ((c = *s++)) {
+		seed = FNV1A_MULT * (seed ^ c);
+	}
+	return seed;
+}
