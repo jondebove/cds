@@ -110,6 +110,7 @@ struct heap *heap_create(struct heap *h, long inc,
 		h->inc = inc;
 		h->less = less;
 		h->ctx = ctx;
+		return h;
 	}
 	return NULL;
 }

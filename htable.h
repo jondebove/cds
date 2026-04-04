@@ -85,7 +85,7 @@ int htable_resize(struct htable *ht, long cap);
 
 /*! htable_enter inserts an entry with key in the hash table.
  * On success, it returns a pointer to the inserted entry and set `*err` to 0.
- * It can fail and set `*err` to:
+ * On failure, it set `*err` to:
  * - `-EEXIST` if an entry with key already exists.
  *   A pointer to the existing entry is returned.
  * - `-EINVAL` if key and entry are incompatible. `NULL` is returned.

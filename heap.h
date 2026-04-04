@@ -54,7 +54,7 @@ struct heap {
 
 /*! heap_create initializes a heap `h` containing elements of size `inc`.
  * The heap will be ordered according to the comparison function `less`.
- * It cannot fail and does not allocate memory.
+ * It returns h on success and NULL on error.
  */
 struct heap *heap_create(struct heap *h, long inc,
 		bool (*less)(void const *a, void const *b, void *ctx),
