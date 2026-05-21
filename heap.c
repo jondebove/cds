@@ -124,11 +124,11 @@ void heap_destroy(struct heap *h)
 int heap_insert(struct heap *h, void const *x)
 {
 	if (h->len == h->cap) {
-		long grow = h->cap > 64 ? h->cap : 64;
+		long grow = h->cap > 63 ? h->cap + 1: 63;
 		if (grow > LONG_MAX / h->inc - h->cap) {
 			return -ERANGE;
 		}
-		char *data = realloc(h->tmp, (h->cap + grow + 1) * h->inc);
+		char *data = realloc(h->tmp, (h->cap + 1 + grow) * h->inc);
 		if (!data) {
 			return -ENOMEM;
 		}
