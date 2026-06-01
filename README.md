@@ -6,6 +6,7 @@ Simple generic C99 data structures and algorithms.
 
 - Dynamic array (`darray`)
 - Dynamic string (`dstring`)
+- Double-ended queue (`deque`)
 - Hash table (`htable`)
 - Heap (`heap`)
 
