@@ -35,7 +35,7 @@
 extern "C" {
 #endif
 
-struct hbucket;
+struct htable_slot;
 
 /*! Interface for a hash table. */
 /*! htable_hash_fn computes hash code of `key`. */
@@ -50,7 +50,7 @@ typedef int (*htable_comp_fn)(void const *key, void const *entry, void *ctx);
 struct htable {
 	/* private */
 	char *data;
-	struct hbucket *table;
+	struct htable_slot *table;
 	long inc;
 	long len;
 	long cap;	/* size * 0.75	*/

@@ -30,13 +30,13 @@
 
 #include "htable.h"
 
-enum hbucket_state {
-	HBUCKET_EMPTY = 0,
-	HBUCKET_TOMB  = 1,
-	HBUCKET_USED  = 2,
+enum {
+	SLOT_EMPTY = 0,
+	SLOT_TOMB  = 1,
+	SLOT_USED  = 2,
 };
 
-struct hbucket {
+struct htable_slot {
 	unsigned long hash;
 };
 
@@ -62,7 +62,7 @@ struct hbucket {
 #define HTABLE_SIZE(shift)	(1L << (shift))
 #define HTABLE_CAP(shift)	((1L << ((shift) - 2)) * 3)
 
-static struct hbucket table_empty[1UL << HTABLE_SHIFT_MIN] = { 0 };
+static struct htable_slot table_empty[1UL << HTABLE_SHIFT_MIN] = { 0 };
 
 void htable_create(struct htable *ht, long inc,
 		htable_hash_fn hash, htable_comp_fn comp, void *ctx)
@@ -128,14 +128,14 @@ static int rehash(struct htable *ht, int shift)
 
 	long j;
 	for (j = 0; j < size; j++) {
-		htnew.table[j].hash = HBUCKET_EMPTY;
+		htnew.table[j].hash = SLOT_EMPTY;
 	}
 
 	for (j = 0; j <= ht->mask; j++) {
-		if (ht->table[j].hash >= HBUCKET_USED) {
+		if (ht->table[j].hash >= SLOT_USED) {
 			long i;
 			HTABLE_PROBE_LOOP(i, ht->table[j].hash, &htnew,
-				if (htnew.table[i].hash == HBUCKET_EMPTY) {
+				if (htnew.table[i].hash == SLOT_EMPTY) {
 					htnew.table[i].hash = ht->table[j].hash;
 					memcpy(htnew.data + i * inc,
 							ht->data + j * inc,
@@ -173,7 +173,7 @@ int htable_resize(struct htable *ht, long cap)
 static unsigned long hashof(struct htable const *ht, void const *key)
 {
 	unsigned long hash = ht->hash(key, ht->ctx);
-	return hash >= HBUCKET_USED ? hash : HBUCKET_USED;
+	return hash >= SLOT_USED ? hash : SLOT_USED;
 }
 
 static int equal(struct htable const *ht, long idx, unsigned long hash,
@@ -200,7 +200,7 @@ void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
 	long i;
 	long j = -1;
 	HTABLE_PROBE_LOOP(i, hash, ht,
-		if (ht->table[i].hash == HBUCKET_EMPTY) {
+		if (ht->table[i].hash == SLOT_EMPTY) {
 			if (j < 0) {
 				ht->cap--;
 			} else {
@@ -210,7 +210,7 @@ void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
 			ht->len++;
 			*err = 0;
 			return &ht->data[i * ht->inc];
-		} else if (ht->table[i].hash == HBUCKET_TOMB) {
+		} else if (ht->table[i].hash == SLOT_TOMB) {
 			j = j < 0 ? i : j;
 		} else if (equal(ht, i, hash, key)) {
 			*err = -EEXIST;
@@ -245,9 +245,9 @@ void *htable_find(struct htable const *ht, void const *key)
 	unsigned long hash = hashof(ht, key);
 	long i;
 	HTABLE_PROBE_LOOP(i, hash, ht,
-		if (ht->table[i].hash == HBUCKET_EMPTY) {
+		if (ht->table[i].hash == SLOT_EMPTY) {
 			return NULL;
-		} else if (ht->table[i].hash == HBUCKET_TOMB) {
+		} else if (ht->table[i].hash == SLOT_TOMB) {
 			continue;
 		} else if (equal(ht, i, hash, key)) {
 			return &ht->data[i * ht->inc];
@@ -264,12 +264,12 @@ void *htable_delete(struct htable *ht, void const *key)
 	unsigned long hash = hashof(ht, key);
 	long i;
 	HTABLE_PROBE_LOOP(i, hash, ht,
-		if (ht->table[i].hash == HBUCKET_EMPTY) {
+		if (ht->table[i].hash == SLOT_EMPTY) {
 			return NULL;
-		} else if (ht->table[i].hash == HBUCKET_TOMB) {
+		} else if (ht->table[i].hash == SLOT_TOMB) {
 			continue;
 		} else if (equal(ht, i, hash, key)) {
-			ht->table[i].hash = HBUCKET_TOMB;
+			ht->table[i].hash = SLOT_TOMB;
 			ht->len--;
 			return &ht->data[i * ht->inc];
 		}
@@ -284,8 +284,8 @@ int htable_delete_unsafe(struct htable *ht, void const *entry)
 	assert(entry);
 
 	long const i = ((char *)entry - ht->data) / ht->inc;
-	if (ht->table[i].hash >= HBUCKET_USED) {
-		ht->table[i].hash = HBUCKET_TOMB;
+	if (ht->table[i].hash >= SLOT_USED) {
+		ht->table[i].hash = SLOT_TOMB;
 		ht->len--;
 		return 0;
 	}
@@ -309,7 +309,7 @@ void htable_walk(struct htable const *ht,
 
 	long j;
 	for (j = 0; j <= ht->mask; j++) {
-		if (ht->table[j].hash >= HBUCKET_USED) {
+		if (ht->table[j].hash >= SLOT_USED) {
 			(*action)(&ht->data[j * ht->inc], context);
 		}
 	}
@@ -322,7 +322,7 @@ void *htable_yield(struct htable const *ht, long *iter)
 
 	long j;
 	for (j = *iter; j <= ht->mask; j++) {
-		if (ht->table[j].hash >= HBUCKET_USED) {
+		if (ht->table[j].hash >= SLOT_USED) {
 			*iter = j;
 			return &ht->data[j * ht->inc];
 		}
