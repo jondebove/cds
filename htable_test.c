@@ -2,20 +2,21 @@
 
 #include "htable.h"
 
-unsigned long hash(void const *key, unsigned long seed)
+static unsigned long hash(void const *key, void *ctx)
 {
-	(void)seed;	/* unused */
+	(void)ctx; /* unused */
 	return (unsigned long)(*(int const *)key);
 }
-int comp(void const *key, void const *entry)
+
+static int comp(void const *key, void const *entry, void *ctx)
 {
+	(void)ctx; /* unused */
 	int const e = *(int const *)entry;
 	int const k = *(int const *)key;
 	return e * e != k;
 }
-struct htable_interface iface = { hash, comp };
 
-void print(void const *item, void *context)
+static void print(void const *item, void *context)
 {
 	char *s = context;
 	int i = *(int *)item;
@@ -28,7 +29,7 @@ int main(void)
 	int i, k, ret;
 
 	struct htable ht;					/* Hash table */
-	htable_create(&ht, sizeof(*e), 0, &iface);		/* Initialization */
+	htable_create(&ht, sizeof(*e), hash, comp, NULL);	/* Initialization */
 
 	for (i = 0; i < 10; i++) {
 		k = i * i;

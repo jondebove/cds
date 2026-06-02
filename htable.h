@@ -38,15 +38,11 @@ extern "C" {
 struct hbucket;
 
 /*! Interface for a hash table. */
-struct htable_interface {
-	/*! hash computes hash code of `key`. */
-	unsigned long (*hash)(void const *key, unsigned long seed);
-	/*! comp returns 0 if `key` and `entry` match. */
-	int (*comp)(void const *key, void const *entry);
+/*! htable_hash_fn computes hash code of `key`. */
+typedef unsigned long (*htable_hash_fn)(void const *key, void *ctx);
 
-	/* in case of double hashing strategy (not implemented) */
-	//unsigned long (*jump)(void const *key, unsigned long seed);
-};
+/*! htable_comp_fn returns 0 if `key` and `entry` match. */
+typedef int (*htable_comp_fn)(void const *key, void const *entry, void *ctx);
 
 /*! Generic hash table.
  * Do not modify its fields unless you know what you are doing.
@@ -60,16 +56,16 @@ struct htable {
 	long cap;	/* size * 0.75	*/
 	long mask;	/* size - 1	*/
 	int shift;	/* log2(size)	*/
-	unsigned long seed;
-	struct htable_interface const *hasher;
+	htable_hash_fn hash;
+	htable_comp_fn comp;
+	void *ctx;
 };
 
 /*! htable_create initializes a hash table `ht` of element of size `inc`.
- * It is recommended to supply a random `seed` in case the hash table is
- * under attack. Cannot fail and does not allocate memory.
+ * Cannot fail and does not allocate memory.
  */
-void htable_create(struct htable *ht, long inc, unsigned long seed,
-		struct htable_interface const *hasher);
+void htable_create(struct htable *ht, long inc,
+		htable_hash_fn hash, htable_comp_fn comp, void *ctx);
 
 /*! htable_destroy frees the memory space internal to the hash table.
  * It does not free the memory allocated by the user for the htable nor

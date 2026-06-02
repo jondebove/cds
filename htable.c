@@ -64,14 +64,13 @@ struct hbucket {
 
 static struct hbucket table_empty[1UL << HTABLE_SHIFT_MIN] = { 0 };
 
-void htable_create(struct htable *ht, long inc, unsigned long seed,
-		struct htable_interface const *hasher)
+void htable_create(struct htable *ht, long inc,
+		htable_hash_fn hash, htable_comp_fn comp, void *ctx)
 {
 	assert(ht);
 	assert(inc > 0);
-	assert(hasher);
-	assert(hasher->hash);
-	assert(hasher->comp);
+	assert(hash);
+	assert(comp);
 
 	ht->data = NULL;
 	ht->table = table_empty;
@@ -83,8 +82,9 @@ void htable_create(struct htable *ht, long inc, unsigned long seed,
 	ht->mask = -1;
 	ht->shift = HTABLE_SHIFT_MIN;
 
-	ht->seed = seed;
-	ht->hasher = hasher;
+	ht->hash = hash;
+	ht->comp = comp;
+	ht->ctx = ctx;
 }
 
 void htable_destroy(struct htable *ht)
@@ -113,7 +113,7 @@ static int rehash(struct htable *ht, int shift)
 	long const size = HTABLE_SIZE(shift);
 
 	struct htable htnew;
-	htable_create(&htnew, inc, ht->seed, ht->hasher);
+	htable_create(&htnew, inc, ht->hash, ht->comp, ht->ctx);
 
 	htnew.table = malloc(size * sizeof(htnew.table[0]));
 	htnew.data = malloc(size * inc);
@@ -172,7 +172,7 @@ int htable_resize(struct htable *ht, long cap)
 
 static unsigned long hashof(struct htable const *ht, void const *key)
 {
-	unsigned long hash = ht->hasher->hash(key, ht->seed);
+	unsigned long hash = ht->hash(key, ht->ctx);
 	return hash >= HBUCKET_USED ? hash : HBUCKET_USED;
 }
 
@@ -180,7 +180,7 @@ static int equal(struct htable const *ht, long idx, unsigned long hash,
 		void const *key)
 {
 	return ht->table[idx].hash == hash &&
-		ht->hasher->comp(key, &ht->data[idx * ht->inc]) == 0;
+		ht->comp(key, &ht->data[idx * ht->inc], ht->ctx) == 0;
 }
 
 void *htable_enter_unsafe(struct htable *ht, void const *key, int *err)
@@ -226,7 +226,7 @@ void *htable_enter(struct htable *ht,
 {
 	assert(ht);
 
-	if (ht->hasher->comp(key, entry)) {
+	if (ht->comp(key, entry, ht->ctx)) {
 		*err = -EINVAL;
 		return NULL;
 	}
