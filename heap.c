@@ -30,15 +30,13 @@
 
 #include "heap.h"
 
-static bool less(struct heap *h, long i, long j)
+static int comp(struct heap *h, long i, long j)
 {
 	assert(h);
 	assert(j >= 0 && j < h->len);
+	assert(i != j);
 
-	if (i == j) {
-		return false;
-	}
-	return h->less(&h->data[i * h->inc], &h->data[j * h->inc], h->ctx);
+	return h->comp(&h->data[i * h->inc], &h->data[j * h->inc], h->ctx);
 }
 
 static void swap(struct heap *h, long i, long j)
@@ -47,15 +45,14 @@ static void swap(struct heap *h, long i, long j)
 	assert(h->tmp);
 	assert(i >= 0 && i < h->len);
 	assert(j >= 0 && j < h->len);
+	assert(i != j);
 
-	if (i != j) {
-		void *const a = &h->data[i * h->inc];
-		void *const b = &h->data[j * h->inc];
+	void *const a = &h->data[i * h->inc];
+	void *const b = &h->data[j * h->inc];
 
-		memcpy(h->tmp, a, h->inc);
-		memcpy(a, b, h->inc);
-		memcpy(b, h->tmp, h->inc);
-	}
+	memcpy(h->tmp, a, h->inc);
+	memcpy(a, b, h->inc);
+	memcpy(b, h->tmp, h->inc);
 }
 
 static void up(struct heap *h, long j)
@@ -63,9 +60,9 @@ static void up(struct heap *h, long j)
 	assert(h);
 	assert(j >= 0 && j < h->len);
 
-	for (;;) {
+	while (j) {
 		long i = (j - 1) / 2; // parent
-		if (i == j || !less(h, j, i)) {
+		if (comp(h, i, j) <= 0) {
 			break;
 		}
 		swap(h, i, j);
@@ -73,23 +70,23 @@ static void up(struct heap *h, long j)
 	}
 }
 
-static bool down(struct heap *h, long i0, long n)
+static int down(struct heap *h, long i0, long n)
 {
 	assert(h);
 	assert(i0 >= 0 && i0 <= n);
 	assert(n >= 0 && n <= h->len);
 
 	long i = i0;
-	for (;;) {
+	while (i < LONG_MAX / 2) { // check overflow
 		long j = 2 * i + 1; // left child
-		if (j >= n || j < 0) { // j < 0 after overflow
+		if (j >= n) {
 			break;
 		}
 		long k = j + 1; // right child
-		if (k < n && less(h, k, j)) {
+		if (k < n && comp(h, j, k) > 0) {
 			j = k;
 		}
-		if (!less(h, j, i)) {
+		if (comp(h, i, j) <= 0) {
 			break;
 		}
 		swap(h, i, j);
@@ -99,7 +96,7 @@ static bool down(struct heap *h, long i0, long n)
 }
 
 struct heap *heap_create(struct heap *h, long inc,
-		bool (*less)(void const *a, void const *b, void *ctx),
+		int (*comp)(void const *a, void const *b, void *ctx),
 		void *ctx)
 {
 	if (h && inc > 0) {
@@ -108,7 +105,7 @@ struct heap *heap_create(struct heap *h, long inc,
 		h->len = 0;
 		h->cap = 0;
 		h->inc = inc;
-		h->less = less;
+		h->comp = comp;
 		h->ctx = ctx;
 		return h;
 	}
@@ -175,12 +172,12 @@ struct heap_sort_ctx {
 	void *ctx;
 };
 
-static bool heap_sort_less(void const *a, void const *b, void *ctx)
+static int heap_sort_comp(void const *a, void const *b, void *ctx)
 {
 	struct heap_sort_ctx *c = ctx;
-	/* > 0 Because the array will be left in reverse order after
+	/* Negative sign because the array will be left in reverse order after
 	   heap_remove. */
-	return c->cmp(a, b, c->ctx) > 0;
+	return -c->cmp(a, b, c->ctx);
 }
 
 void heap_sort(void *base, size_t n, size_t size,
@@ -205,7 +202,7 @@ void heap_sort(void *base, size_t n, size_t size,
 		.len = n,
 		.cap = n,
 		.inc = size,
-		.less = heap_sort_less,
+		.comp = heap_sort_comp,
 		.ctx = &c,
 	};
 

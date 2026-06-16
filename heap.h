@@ -31,7 +31,6 @@
  * \brief Generic heap.
  */
 
-#include <stdbool.h>
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -48,16 +47,16 @@ struct heap {
 	long cap;
 	long inc;
 
-	bool (*less)(void const *a, void const *b, void *ctx);
+	int (*comp)(void const *a, void const *b, void *ctx);
 	void *ctx;
 };
 
 /*! heap_create initializes a heap `h` containing elements of size `inc`.
- * The heap will be ordered according to the comparison function `less`.
+ * The heap will be ordered according to the comparison function `comp`.
  * It returns h on success and NULL on error.
  */
 struct heap *heap_create(struct heap *h, long inc,
-		bool (*less)(void const *a, void const *b, void *ctx),
+		int (*comp)(void const *a, void const *b, void *ctx),
 		void *ctx);
 
 /*! heap_destroy frees the memory space internal to the heap.

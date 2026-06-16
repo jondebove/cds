@@ -2,10 +2,12 @@
 
 #include "heap.h"
 
-static bool less(void const *a, void const *b, void *ctx)
+static int comp(void const *a, void const *b, void *ctx)
 {
+	int xa = *(int const *)a;
+	int xb = *(int const *)b;
 	(void)ctx;
-	return *(int *)a < *(int *)b;
+	return xa < xb ? -1 : xa > xb;
 }
 
 int main(void)
@@ -14,7 +16,7 @@ int main(void)
 	int i;
 
 	struct heap h;						/* Heap */
-	heap_create(&h, sizeof(*e), less, NULL);		/* Initialization */
+	heap_create(&h, sizeof(*e), comp, NULL);		/* Initialization */
 
 	for (i = 10; i > 0; i--) {
 		heap_insert(&h, &i);				/* Insert */
