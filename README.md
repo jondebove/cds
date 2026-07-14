@@ -17,7 +17,6 @@ Genericity is achieved using `void *`, so the compiler will not help you.
 
 - Combinations and permutations
 - FNV1a hash
-- gcd, lcm
 - base64
 
 ## Usage
