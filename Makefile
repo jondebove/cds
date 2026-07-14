@@ -2,7 +2,8 @@
 
 CFLAGS = -Wall -Wextra #-DNDEBUG
 
-TESTS =	comb_test	\
+TESTS = base64_test	\
+	comb_test	\
 	darray_test	\
 	deque_test	\
 	dstring_test	\
@@ -15,6 +16,7 @@ TESTS =	comb_test	\
 
 all: $(TESTS)
 
+base64_test: base64_test.c base64.o
 comb_test: comb_test.c comb.o
 darray_test: darray_test.c darray.o
 deque_test: deque_test.c deque.o
@@ -24,9 +26,10 @@ heap_test: heap_test.c heap.o
 htable_test: htable_test.c htable.o
 slice_test: slice_test.c slice.o
 
+base64.o: base64.c base64.h
 comb.o: comb.c comb.h
 darray.o: darray.c darray.h
-deque_test: deque_test.c deque.o
+deque.o: deque.c deque.h
 dstring.o: dstring.c dstring.h
 fnv1a.o: fnv1a.c fnv1a.h
 heap.o: heap.c heap.h
