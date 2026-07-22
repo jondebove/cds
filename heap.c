@@ -190,14 +190,20 @@ void heap_sort(void *base, size_t n, size_t size,
 	/* To be in-place, we do not call create, destroy and insert.
 	   We use the memory of the input array but we still need some
 	   memory to be able to swap... If it is not enough, abort. */
-	char tmp[256];
-	if (size > sizeof(tmp)) {
+	union {
+		char data[256];
+		/* for alignment */
+		long double ld;
+		long long ll;
+		void *p;
+	} tmp;
+	if (size > sizeof(tmp.data)) {
 		abort();
 	}
 
 	struct heap_sort_ctx c = { cmp, ctx };
 	struct heap h = {
-		.tmp = tmp,
+		.tmp = tmp.data,
 		.data = base,
 		.len = n,
 		.cap = n,
